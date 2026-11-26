@@ -1,0 +1,494 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Euler Number Tutorial</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: four lesson blocks (canvas, sliders, readout) then a summary table.
+   Palette: cool blue-grey ground; violet = pressure force, orange = inertia, blue = water, in every scene. */
+:root {
+  --bg: #f3f6f9;
+  --panel: #ffffff;
+  --stage: #edf2f7;
+  --fg: #13202c;
+  --muted: #546577;
+  --line: #cdd7e1;
+  --water: #1b6bb5;
+  --pres: #8a3ab9;
+  --iner: #c2410c;
+  --plate: #7d8da0;
+  --fluid: #d3e4f4;
+  --font-display: "Space Grotesk", "Inter", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d151c; --panel: #14202a; --stage: #0f1922; --fg: #e5ecf3; --muted: #9aabbc;
+    --line: #29384a; --water: #63b0ee; --pres: #c9a2f5; --iner: #f59467; --plate: #5c6e81; --fluid: #17304a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d151c; --panel: #14202a; --stage: #0f1922; --fg: #e5ecf3; --muted: #9aabbc;
+  --line: #29384a; --water: #63b0ee; --pres: #c9a2f5; --iner: #f59467; --plate: #5c6e81; --fluid: #17304a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--font-body); font-size: 16px; line-height: 1.55;
+  padding-block: 28px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+main { max-width: 960px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+h1, h2 { font-family: var(--font-display); text-wrap: balance; margin: 0; line-height: 1.15; }
+h1 { font-size: clamp(28px, 5vw, 42px); font-weight: 700; letter-spacing: -0.01em; }
+h2 { font-size: clamp(21px, 3.2vw, 26px); font-weight: 700; }
+p { margin: 0; max-width: 66ch; }
+.lede { color: var(--muted); font-size: 17px; margin-top: 10px; }
+.eq {
+  font-family: var(--font-mono); font-size: 15px; background: var(--stage);
+  border: 1px solid var(--line); border-radius: 6px; padding: 10px 14px;
+  display: inline-block; max-width: 100%; overflow-x: auto;
+}
+.pres { color: var(--pres); font-weight: 600; }
+.iner { color: var(--iner); font-weight: 600; }
+.lesson {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  padding: 20px; display: flex; flex-direction: column; gap: 14px; min-width: 0;
+}
+.lesson header { display: flex; flex-direction: column; gap: 8px; }
+.kicker { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.stage { position: relative; background: var(--stage); border-radius: 8px; overflow: hidden; }
+.stage canvas { display: block; width: 100%; }
+.controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px 20px; align-items: end; }
+.ctl { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ctl label { font-size: 13px; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; }
+.ctl output { font-family: var(--font-mono); font-size: 13px; color: var(--fg); }
+input[type="range"] { width: 100%; accent-color: var(--pres); }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.btn {
+  font: inherit; font-size: 13px; font-weight: 500; color: var(--fg); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 6px; padding: 6px 12px; cursor: pointer;
+}
+.btn:hover { border-color: var(--pres); }
+.btn:focus-visible, input:focus-visible { outline: 2px solid var(--pres); outline-offset: 2px; }
+.readout {
+  font-family: var(--font-mono); font-size: 14px; display: flex; flex-wrap: wrap; gap: 6px 24px;
+  padding: 10px 12px; background: var(--stage); border-radius: 6px; line-height: 1.7;
+}
+.readout div { min-width: 0; }
+.readout sup { font-size: 0.7em; }
+.big { font-family: var(--font-display); font-size: 22px; font-weight: 700; }
+.note { font-size: 14px; color: var(--muted); }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 15px; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+tr:last-child td { border-bottom: 0; }
+td:first-child { font-family: var(--font-mono); white-space: nowrap; }
+@media (max-width: 480px) { .lesson { padding: 14px; } }
+</style>
+
+<main>
+  <header>
+    <p class="kicker">Dimensionless numbers for chemical engineers</p>
+    <h1>Euler Number Tutorial</h1>
+    <p class="lede">The Euler number applies wherever a fluid has to be pushed through something that resists it, such as a filter, a valve, a bed of packed pebbles or a long pipe. Two things compete. The <span class="pres">pressure force</span> pushes the fluid through. <span class="iner">Inertia</span> is the force the moving fluid carries with it. Eu compares them, and so it tells us how hard the fluid has to be pushed, compared with how fast it is going. Every animation below can be changed with the sliders.</p>
+  </header>
+
+  <!-- 1 -->
+  <section class="lesson" aria-labelledby="h1s">
+    <header>
+      <p class="kicker">Step 1 of 4</p>
+      <h2 id="h1s">Pressure force and inertia in a filter</h2>
+      <p>To get water through a filter or a bed of grains, the pressure at the inlet must be higher than at the outlet. Acting on a fluid element of size L, this pressure difference Δp gives a net push of <span class="pres">F<sub>p</sub> ~ Δp L²</span> (pressure times area). The moving fluid also carries inertia, <span class="iner">F<sub>i</sub> ~ ρU²L²</span>, the force scale from the previous chapter. The two gauge tubes show the pressure on each side of the grains, and the two arrows on the right show both force scales for one fluid element. The arrow lengths follow a logarithmic scale, so that a factor of ten always looks the same. The fluid is water, ρ = 1000 kg/m³.</p>
+    </header>
+    <div class="stage"><canvas id="c1" role="img" aria-label="Water flowing through a bed of grains with gauge tubes showing the pressure drop, and arrows for the pressure force and the inertial force on a fluid element"></canvas></div>
+    <div class="row"><button class="btn" id="c1Play" type="button">Pause</button>
+      <button class="btn" data-p1="10,1" type="button">Wide-open pipe</button>
+      <button class="btn" data-p1="20000,2" type="button">Valve</button>
+      <button class="btn" data-p1="12000,0.5" type="button">Fine filter</button>
+      <button class="btn" data-p1="30000,0.1" type="button">Packed bed</button></div>
+    <div class="controls">
+      <div class="ctl"><label for="s1p">Pressure drop Δp <output id="o1p"></output></label><input id="s1p" type="range" min="0" max="5" step="0.01" value="4"></div>
+      <div class="ctl"><label for="s1U">Flow speed U <output id="o1U"></output></label><input id="s1U" type="range" min="-1" max="1" step="0.01" value="0"></div>
+    </div>
+    <div class="readout" id="r1"></div>
+  </section>
+
+  <!-- 2 -->
+  <section class="lesson" aria-labelledby="h2s">
+    <header>
+      <p class="kicker">Step 2 of 4</p>
+      <h2 id="h2s">The ratio is the Euler number</h2>
+      <p>Dividing the pressure force scale by the inertial force scale, the area L² cancels:</p>
+      <span class="eq">Eu = F<sub>p</sub> / F<sub>i</sub> = Δp L² / ρU²L² = Δp / ρU²</span>
+      <p>The balance tips to the left when the pressure force is larger (Eu above 1). That means that the fluid has to be pushed much harder than its own motion would suggest, as in a fine filter. It tips to the right when inertia is larger (Eu below 1), as in a wide-open pipe. The tilt follows log<sub>10</sub>(Eu).</p>
+    </header>
+    <div class="stage"><canvas id="c2" role="img" aria-label="Balance comparing the pressure force scale and the inertial force scale"></canvas></div>
+    <div class="row"><button class="btn" id="c2Play" type="button">Pause</button>
+      <button class="btn" data-p2="10,1000,1" type="button">Wide-open pipe</button>
+      <button class="btn" data-p2="150,1.2,15" type="button">Air duct</button>
+      <button class="btn" data-p2="20000,1000,2" type="button">Valve</button>
+      <button class="btn" data-p2="12000,1000,0.5" type="button">Fine filter</button>
+      <button class="btn" data-p2="30000,1000,0.1" type="button">Packed bed</button></div>
+    <div class="controls">
+      <div class="ctl"><label for="s2p">Pressure drop Δp <output id="o2p"></output></label><input id="s2p" type="range" min="0" max="5" step="0.01" value="4.3"></div>
+      <div class="ctl"><label for="s2r">Density ρ <output id="o2r"></output></label><input id="s2r" type="range" min="0" max="3.3" step="0.01" value="3"></div>
+      <div class="ctl"><label for="s2U">Speed U <output id="o2U"></output></label><input id="s2U" type="range" min="-1" max="1.3" step="0.01" value="0.3"></div>
+    </div>
+    <div class="readout" id="r2"></div>
+  </section>
+
+  <!-- 3 -->
+  <section class="lesson" aria-labelledby="h3s">
+    <header>
+      <p class="kicker">Step 3 of 4</p>
+      <h2 id="h3s">Eu belongs to the obstruction</h2>
+      <p>Every fitting, filter or bed has its own Eu, which is set mainly by its shape. The plot below shows the pressure along the pipe divided by ρU². The pressure falls across the obstruction by exactly <span class="eq" style="padding:2px 8px">Δp / ρU² = Eu</span>. Because the plot is divided by ρU², it does not change when you change the speed, even though the real Δp in the readout does. The narrowing of the gap makes the fluid speed up through it, which is why a larger Eu needs more pressure. Many engineers quote the loss coefficient K = Δp / (½ρU²) instead, which is simply K = 2 Eu.</p>
+    </header>
+    <div class="stage"><canvas id="c3" role="img" aria-label="Pipe with an obstruction above a plot of pressure divided by rho U squared along the pipe, which drops by Eu across the obstruction"></canvas></div>
+    <div class="row"><button class="btn" id="c3Play" type="button">Pause</button>
+      <button class="btn" data-p3="0.1" type="button">Short straight run (0.1)</button>
+      <button class="btn" data-p3="2" type="button">Orifice plate (2)</button>
+      <button class="btn" data-p3="5" type="button">Globe valve (5)</button>
+      <button class="btn" data-p3="30" type="button">Fine filter (30)</button></div>
+    <div class="controls">
+      <div class="ctl"><label for="s3e">Resistance of the obstruction, Eu <output id="o3e"></output></label><input id="s3e" type="range" min="-1" max="1.5" step="0.01" value="0.5"></div>
+      <div class="ctl"><label for="s3U">Flow speed U <output id="o3U"></output></label><input id="s3U" type="range" min="-1" max="1" step="0.01" value="0"></div>
+    </div>
+    <div class="readout" id="r3"></div>
+    <p class="note">The values on the buttons are typical orders of magnitude. The real values depend on the exact design.</p>
+  </section>
+
+  <!-- 4 -->
+  <section class="lesson" aria-labelledby="h4s">
+    <header>
+      <p class="kicker">Step 4 of 4</p>
+      <h2 id="h4s">Why speed is so expensive</h2>
+      <p>For a given obstruction at high speed, Eu stays the same, so <span class="eq" style="padding:2px 8px">Δp = Eu ρU²</span>. Doubling the speed quadruples the pressure drop. The pumping power per unit of pipe area is Δp × U, so it grows as U³, and doubling the speed needs eight times the power. Halving the speed saves seven eighths of it. The sliders set Eu and the speed U compared with a reference speed U₀ = 1 m/s of water.</p>
+    </header>
+    <div class="stage"><canvas id="c4" role="img" aria-label="Curves of pressure drop and pumping power against flow speed, rising as the square and the cube"></canvas></div>
+    <div class="row"><button class="btn" id="c4Play" type="button">Pause</button></div>
+    <div class="controls">
+      <div class="ctl"><label for="s4e">Eu of the obstruction <output id="o4e"></output></label><input id="s4e" type="range" min="-1" max="2.5" step="0.01" value="0.5"></div>
+      <div class="ctl"><label for="s4r">Speed ratio U / U₀ <output id="o4r"></output></label><input id="s4r" type="range" min="-0.6" max="0.6" step="0.01" value="0"></div>
+    </div>
+    <div class="readout" id="r4"></div>
+    <p class="note">This holds for turbulent flow and for sharp-edged fittings, where Eu is nearly constant. In slow, smooth (laminar) flow through fine filters and packed beds, viscosity dominates. There Eu itself falls as the speed rises (Eu ∝ 1/Re), and Δp grows only in proportion to U.</p>
+  </section>
+
+  <section class="lesson" aria-labelledby="h5s">
+    <h2 id="h5s">Rules of thumb</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Eu</th><th>What it means</th><th>Typical examples</th></tr></thead>
+        <tbody>
+          <tr><td>≲ 0.1</td><td>The pressure loss is small compared with the inertia of the flow. The fluid passes through easily.</td><td>Short straight pipes, wide-open fittings.</td></tr>
+          <tr><td>~ 1</td><td>The pressure force and inertia are comparable.</td><td>Orifice plates, valves, bends and tees.</td></tr>
+          <tr><td>≫ 10</td><td>The pressure force dominates. The fluid has to be pushed hard to get through, and the pumping cost is high.</td><td>Fine filters, membranes, packed beds. Long pipes also, since Eu = fL / 2D.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Some books define Eu with ½ρU² in the denominator, and then call it the loss coefficient K or the pressure coefficient C<sub>p</sub>. Check which definition is used before comparing values: K = 2 Eu. Euler scaling: a small model of a valve, filter or pipe network gives the same pressure drop in units of ρU² as the full-size one when the geometry is similar and the Reynolds numbers match.</p>
+  </section>
+</main>
+
+<script>
+(function () {
+  var clamp = function (x, a, b) { return Math.min(b, Math.max(a, x)); };
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var $ = function (id) { return document.getElementById(id); };
+  var each = function (sel, fn) { Array.prototype.forEach.call(document.querySelectorAll(sel), fn); };
+
+  function fmtP(p) {
+    if (p < 1e3) return (p < 10 ? p.toFixed(1) : p.toFixed(0)) + ' Pa';
+    if (p < 1e6) { var k = p / 1e3; return (k < 10 ? k.toFixed(2) : k < 100 ? k.toFixed(1) : k.toFixed(0)) + ' kPa'; }
+    return (p / 1e6).toFixed(2) + ' MPa';
+  }
+  function fmtEu(x) { return x >= 1000 ? x.toFixed(0) : x.toPrecision(3); }
+  function fmtU(u) { return u.toPrecision(2) + ' m/s'; }
+  function fmtRho(r) { return (r < 10 ? r.toFixed(1) : r.toFixed(0)) + ' kg/m³'; }
+  function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+  var scenes = [];
+  function scene(id, aspect, draw, step) {
+    var canvas = $(id), ctx = canvas.getContext('2d');
+    var s = { canvas: canvas, ctx: ctx, w: 0, h: 0, t: 0, playing: !reduce, vis: true, dirty: true, draw: draw, step: step };
+    var btn = $(id + 'Play');
+    btn.textContent = s.playing ? 'Pause' : 'Play';
+    btn.addEventListener('click', function () { s.playing = !s.playing; btn.textContent = s.playing ? 'Pause' : 'Play'; s.dirty = true; });
+    function size() {
+      var dpr = window.devicePixelRatio || 1;
+      var w = canvas.parentElement.clientWidth || 600;
+      var asp = typeof aspect === 'function' ? aspect(w) : aspect;
+      var h = Math.max(220, Math.round(w * asp));
+      s.w = w; s.h = h;
+      canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
+      canvas.style.height = h + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      s.dirty = true;
+    }
+    if (window.ResizeObserver) new ResizeObserver(size).observe(canvas.parentElement);
+    window.addEventListener('resize', size);
+    size();
+    if (window.IntersectionObserver) new IntersectionObserver(function (e) { s.vis = e[0].isIntersecting; }, { threshold: 0 }).observe(canvas);
+    scenes.push(s);
+    return s;
+  }
+  function on(ids, fn, s) {
+    ids.forEach(function (i) { $(i).addEventListener('input', function () { fn(); if (s) s.dirty = true; }); });
+    fn();
+  }
+  function arrow(ctx, x1, y1, x2, y2, col, lw) {
+    lw = lw || 3;
+    var a = Math.atan2(y2 - y1, x2 - x1), hs = 8 + lw;
+    ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = lw; ctx.lineCap = 'round'; ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2 - 3 * Math.cos(a), y2 - 3 * Math.sin(a)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x2, y2);
+    ctx.lineTo(x2 - hs * Math.cos(a - 0.45), y2 - hs * Math.sin(a - 0.45));
+    ctx.lineTo(x2 - hs * Math.cos(a + 0.45), y2 - hs * Math.sin(a + 0.45));
+    ctx.closePath(); ctx.fill();
+  }
+  function text(ctx, str, x, y, col, align, size, weight) {
+    ctx.fillStyle = col; ctx.textAlign = align || 'left';
+    ctx.font = (weight ? weight + ' ' : '') + (size || 13) + 'px Inter, system-ui, sans-serif';
+    ctx.fillText(str, x, y);
+  }
+  function line(ctx, x1, y1, x2, y2, col, lw, dash) {
+    ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.setLineDash(dash || []);
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); ctx.setLineDash([]);
+  }
+  function dotsInit(n) { var d = []; for (var j = 0; j < n; j++) d.push({ x: Math.random(), e: 0.08 + 0.84 * Math.random() }); return d; }
+  function press(sel, fn) { each(sel, function (b) { b.addEventListener('click', fn(b)); }); }
+
+  /* ---------- Scene 1: pressure force and inertia ---------- */
+  var P1 = { dp: 1e4, U: 1, rho: 1000 };
+  function lay1(w, h) {
+    if (w >= 520) return { px0: 10, px1: 0.62 * w, cy: 0.62 * h, ph: 0.17 * h, ex0: 0.66 * w, ex1: w - 8, ecy: 0.58 * h };
+    return { px0: 10, px1: w - 10, cy: 0.33 * h, ph: 0.09 * h, ex0: 10, ex1: w - 10, ecy: 0.78 * h };
+  }
+  var s1 = scene('c1', function (w) { return w < 520 ? 1.05 : 0.42; }, draw1, function (s, dt) {
+    var L = lay1(s.w, s.h), f = 30 * Math.pow(P1.U, 0.6) / (L.px1 - L.px0);
+    for (var k = 0; k < s.dots.length; k++) { var q = s.dots[k]; q.x += f * dt; if (q.x > 1) q.x -= 1; }
+  });
+  s1.dots = dotsInit(60);
+  function draw1(s, C) {
+    var ctx = s.ctx, w = s.w, h = s.h, L = lay1(w, h), i, k;
+    var pw = L.px1 - L.px0, top = L.cy - L.ph, bot = L.cy + L.ph, xs = L.px0 + pw * 0.5;
+    ctx.globalAlpha = 0.6; ctx.fillStyle = C.fluid; ctx.fillRect(L.px0, top, pw, 2 * L.ph);
+    ctx.globalAlpha = 0.35; ctx.fillStyle = C.plate; ctx.fillRect(L.px0, top - 7, pw, 7); ctx.fillRect(L.px0, bot, pw, 7); ctx.globalAlpha = 1;
+    line(ctx, L.px0, top, L.px1, top, C.fg, 2); line(ctx, L.px0, bot, L.px1, bot, C.fg, 2);
+    // grains
+    var n = Math.max(3, Math.floor(2 * L.ph / 13)), rg = Math.min(5.5, L.ph / n * 0.9), step = 2 * L.ph / n;
+    ctx.fillStyle = C.plate; ctx.globalAlpha = 0.85;
+    for (i = 0; i < 3; i++) for (k = 0; k < n; k++) { ctx.beginPath(); ctx.arc(xs + (i - 1) * 13, top + (k + 0.25 + (i % 2) * 0.5) * step, rg, 0, 6.2832); ctx.fill(); }
+    // flow dots
+    ctx.fillStyle = C.water; ctx.globalAlpha = 0.75;
+    for (k = 0; k < s.dots.length; k++) {
+      var q = s.dots[k], near = Math.abs(q.x - 0.5) < 0.07;
+      ctx.beginPath(); ctx.arc(L.px0 + q.x * pw, top + q.e * 2 * L.ph + (near ? 3 * Math.sin(s.t * 7 + k) : 0), 2.4, 0, 6.2832); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    text(ctx, 'flow →', L.px0 + 4, bot + 24, C.muted, 'left', 12);
+    text(ctx, 'filter or packed bed', xs, bot + 24, C.muted, 'center', 12);
+    // gauge tubes
+    var t1 = L.px0 + pw * 0.2, t2 = L.px0 + pw * 0.8, tubeH = top - 12, base = 18, dhm = Math.max(10, tubeH - base - 14);
+    var dh = 4 + (dhm - 4) * clamp(Math.log10(P1.dp) / 5, 0, 1);
+    [[t1, base + dh], [t2, base]].forEach(function (a) {
+      ctx.globalAlpha = 0.85; ctx.fillStyle = C.water; ctx.fillRect(a[0] - 5, top - a[1], 10, a[1]); ctx.globalAlpha = 1;
+      ctx.strokeStyle = C.fg; ctx.lineWidth = 1.5; ctx.setLineDash([]); ctx.strokeRect(a[0] - 6, top - tubeH, 12, tubeH);
+    });
+    var yu = top - base - dh, yd = top - base;
+    line(ctx, t1, yu, t2 + 24, yu, C.pres, 1.5, [4, 3]);
+    arrow(ctx, t2 + 18, yu, t2 + 18, yd, C.pres, 2.5);
+    text(ctx, 'Δp', t2 + 28, (yu + yd) / 2 + 4, C.pres, 'left', 13, 600);
+    text(ctx, 'p₁', t1, top + 17, C.muted, 'center', 12);
+    text(ctx, 'p₂', t2, top + 17, C.muted, 'center', 12);
+    // fluid element and force arrows
+    var pwid = L.ex1 - L.ex0, bs = 56, bx = L.ex0 + pwid * 0.08, by = L.ecy - bs / 2;
+    ctx.globalAlpha = 0.8; ctx.fillStyle = C.fluid; ctx.fillRect(bx, by, bs, bs); ctx.globalAlpha = 1;
+    ctx.strokeStyle = C.water; ctx.lineWidth = 2; ctx.strokeRect(bx, by, bs, bs);
+    text(ctx, 'fluid', bx + bs / 2, by + bs / 2 - 2, C.muted, 'center', 11);
+    text(ctx, 'element', bx + bs / 2, by + bs / 2 + 11, C.muted, 'center', 11);
+    var fp = P1.dp, fi = P1.rho * P1.U * P1.U;
+    var lp = 16 + (0.84 * pwid - 16) * clamp(Math.log10(fp) / 5, 0, 1);
+    var li = 16 + (0.84 * pwid - 16) * clamp(Math.log10(fi) / 5, 0, 1);
+    arrow(ctx, bx, by - 18, bx + lp, by - 18, C.pres, 4);
+    text(ctx, 'pressure force ~ Δp L²', bx, by - 30, C.pres, 'left', 13, 600);
+    arrow(ctx, bx, by + bs + 18, bx + li, by + bs + 18, C.iner, 4);
+    text(ctx, 'inertial force ~ ρU²L²', bx, by + bs + 40, C.iner, 'left', 13, 600);
+  }
+  function setA() {
+    P1.dp = Math.pow(10, +$('s1p').value); P1.U = Math.pow(10, +$('s1U').value);
+    $('o1p').innerHTML = fmtP(P1.dp); $('o1U').innerHTML = fmtU(P1.U);
+    var fi = P1.rho * P1.U * P1.U, eu = P1.dp / fi;
+    var who = Math.abs(Math.log10(eu)) < 0.05 ? 'the forces balance' : eu > 1 ? '<span class="pres">pressure force wins</span>' : '<span class="iner">inertia wins</span>';
+    $('r1').innerHTML = '<div>Δp = <span class="pres">' + fmtP(P1.dp) + '</span></div><div>ρU² = <span class="iner">' + fmtP(fi) + '</span></div><div class="big">Eu = ' + fmtEu(eu) + '</div><div>' + who + '</div>';
+  }
+  on(['s1p', 's1U'], setA, s1);
+  press('[data-p1]', function (b) { return function () {
+    var a = b.getAttribute('data-p1').split(',');
+    $('s1p').value = Math.log10(+a[0]); $('s1U').value = Math.log10(+a[1]); setA(); s1.dirty = true;
+  }; });
+
+  /* ---------- Scene 2: the balance ---------- */
+  var B = { dp: 2e4, rho: 1000, U: 2 };
+  function tgt2() { return clamp(Math.log10(B.dp / (B.rho * B.U * B.U)) / 3, -1, 1) * 0.22; }
+  var s2 = scene('c2', function (w) { return w < 520 ? 0.85 : 0.5; }, draw2, function (s, dt) {
+    s.th += (tgt2() - s.th) * Math.min(1, dt * 4);
+  });
+  s2.th = tgt2();
+  function draw2(s, C) {
+    if (!s.playing) s.th = tgt2();
+    var ctx = s.ctx, w = s.w, h = s.h, cx = w / 2, py = h * 0.5, half = Math.min(0.36 * w, 300), th = s.th;
+    var fp = B.dp, fi = B.rho * B.U * B.U, eu = fp / fi;
+    line(ctx, cx, py, cx, h - 14, C.fg, 3); line(ctx, cx - 34, h - 14, cx + 34, h - 14, C.fg, 3);
+    var xl = cx - half * Math.cos(th), yl = py + half * Math.sin(th), xr = cx + half * Math.cos(th), yr = py - half * Math.sin(th);
+    line(ctx, xl, yl, xr, yr, C.fg, 4);
+    ctx.fillStyle = C.fg; ctx.beginPath(); ctx.arc(cx, py, 5, 0, 6.2832); ctx.fill();
+    var sl = h * 0.1;
+    function pan(x, y, col, val, name, vtxt) {
+      line(ctx, x, y, x - 36, y + sl, C.muted, 1.2); line(ctx, x, y, x + 36, y + sl, C.muted, 1.2);
+      line(ctx, x - 40, y + sl, x + 40, y + sl, C.fg, 3);
+      var side = 16 + 24 * clamp((Math.log10(Math.max(val, 1e-2)) + 2) / 7, 0, 1);
+      ctx.globalAlpha = 0.85; ctx.fillStyle = col; ctx.fillRect(x - side / 2, y + sl - 3 - side, side, side); ctx.globalAlpha = 1;
+      text(ctx, name, x, y + sl + 21, col, 'center', 13, 600);
+      text(ctx, vtxt, x, y + sl + 38, C.fg, 'center', 13);
+    }
+    pan(xl, yl, C.pres, fp, 'pressure force', 'Δp = ' + fmtP(fp));
+    pan(xr, yr, C.iner, fi, 'inertial force', 'ρU² = ' + fmtP(fi));
+    text(ctx, 'Eu = ' + fmtEu(eu), cx, 32, C.fg, 'center', 24, 700);
+    text(ctx, Math.abs(Math.log10(eu)) < 0.05 ? 'the forces balance' : eu > 1 ? 'pressure force is larger' : 'inertia is larger', cx, 54, C.muted, 'center', 13);
+  }
+  function setB() {
+    B.dp = Math.pow(10, +$('s2p').value); B.rho = Math.pow(10, +$('s2r').value); B.U = Math.pow(10, +$('s2U').value);
+    $('o2p').innerHTML = fmtP(B.dp); $('o2r').innerHTML = fmtRho(B.rho); $('o2U').innerHTML = fmtU(B.U);
+    var fi = B.rho * B.U * B.U, eu = B.dp / fi;
+    $('r2').innerHTML = '<div>Δp = <span class="pres">' + fmtP(B.dp) + '</span></div><div>ρU² = <span class="iner">' + fmtP(fi) + '</span></div><div class="big">Eu = ' + fmtEu(eu) + '</div><div>log₁₀ Eu = ' + Math.log10(eu).toFixed(2) + '</div>';
+  }
+  on(['s2p', 's2r', 's2U'], setB, s2);
+  press('[data-p2]', function (b) { return function () {
+    var a = b.getAttribute('data-p2').split(',');
+    $('s2p').value = Math.log10(+a[0]); $('s2r').value = Math.log10(+a[1]); $('s2U').value = Math.log10(+a[2]); setB(); s2.dirty = true;
+  }; });
+
+  /* ---------- Scene 3: pressure profile along the pipe ---------- */
+  var C3 = { eu: 3.16, U: 1, rho: 1000 };
+  function lay3(w, h) {
+    var wide = w >= 520;
+    return { x0: wide ? 0.1 * w : 0.14 * w, x1: w - 16, cy: h * (wide ? 0.2 : 0.17), ph: h * (wide ? 0.1 : 0.07), pt: h * (wide ? 0.5 : 0.42), pb: h * (wide ? 0.86 : 0.82) };
+  }
+  function open3() { return 1 - 0.8 * clamp((Math.log10(C3.eu) + 1) / 2.5, 0, 1); }
+  var s3 = scene('c3', function (w) { return w < 520 ? 0.95 : 0.62; }, draw3, function (s, dt) {
+    var L = lay3(s.w, s.h), f = 30 * Math.pow(C3.U, 0.6) / (L.x1 - L.x0), op = open3();
+    for (var k = 0; k < s.dots.length; k++) {
+      var q = s.dots[k], g = Math.exp(-Math.pow((q.x - 0.5) / 0.045, 2));
+      q.x += f * dt * (1 + (1 / op - 1) * g); if (q.x > 1) q.x -= 1;
+    }
+  });
+  s3.dots = dotsInit(70);
+  function draw3(s, C) {
+    var ctx = s.ctx, w = s.w, h = s.h, L = lay3(w, h), k;
+    var pw = L.x1 - L.x0, top = L.cy - L.ph, bot = L.cy + L.ph, xo = L.x0 + pw * 0.5, op = open3();
+    ctx.globalAlpha = 0.6; ctx.fillStyle = C.fluid; ctx.fillRect(L.x0, top, pw, 2 * L.ph);
+    ctx.globalAlpha = 0.35; ctx.fillStyle = C.plate; ctx.fillRect(L.x0, top - 7, pw, 7); ctx.fillRect(L.x0, bot, pw, 7); ctx.globalAlpha = 1;
+    line(ctx, L.x0, top, L.x1, top, C.fg, 2); line(ctx, L.x0, bot, L.x1, bot, C.fg, 2);
+    ctx.fillStyle = C.plate; ctx.fillRect(xo - 4, top, 8, L.ph * (1 - op)); ctx.fillRect(xo - 4, bot - L.ph * (1 - op), 8, L.ph * (1 - op));
+    ctx.fillStyle = C.water; ctx.globalAlpha = 0.75;
+    for (k = 0; k < s.dots.length; k++) {
+      var q = s.dots[k], g = Math.exp(-Math.pow((q.x - 0.5) / 0.045, 2)), e = (q.e - 0.5) * 2 * 0.92;
+      ctx.beginPath(); ctx.arc(L.x0 + q.x * pw, L.cy + e * L.ph * (1 - (1 - op) * g), 2.4, 0, 6.2832); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    text(ctx, 'flow →', L.x0 + 4, top - 12, C.muted, 'left', 12);
+    // plot
+    var nice = [0.2, 0.5, 1, 2, 5, 10, 20, 50, 100], ym = 100, i;
+    for (i = 0; i < nice.length; i++) if (nice[i] >= C3.eu * 1.2) { ym = nice[i]; break; }
+    var Y = function (v) { return L.pb - (L.pb - L.pt) * v / ym; };
+    [0, ym / 2, ym].forEach(function (v) {
+      line(ctx, L.x0, Y(v), L.x1, Y(v), C.line, 1);
+      text(ctx, +v.toPrecision(2) + '', L.x0 - 6, Y(v) + 4, C.muted, 'right', 12);
+    });
+    line(ctx, L.x0, L.pt, L.x0, L.pb, C.fg, 1.5);
+    text(ctx, 'p / ρU²', L.x0 + 6, L.pt - 8, C.muted, 'left', 12);
+    text(ctx, 'position along the pipe', (L.x0 + L.x1) / 2, L.pb + 22, C.muted, 'center', 12);
+    var kk = Math.max(5, 0.012 * w), x, pp;
+    ctx.beginPath(); ctx.moveTo(L.x0, L.pb);
+    for (x = L.x0; x <= L.x1; x += 2) { pp = C3.eu * (1 - 1 / (1 + Math.exp(-(x - xo) / kk))); ctx.lineTo(x, Y(pp)); }
+    ctx.lineTo(L.x1, L.pb); ctx.closePath(); ctx.globalAlpha = 0.14; ctx.fillStyle = C.pres; ctx.fill(); ctx.globalAlpha = 1;
+    ctx.beginPath();
+    for (x = L.x0; x <= L.x1; x += 2) { pp = C3.eu * (1 - 1 / (1 + Math.exp(-(x - xo) / kk))); if (x === L.x0) ctx.moveTo(x, Y(pp)); else ctx.lineTo(x, Y(pp)); }
+    ctx.strokeStyle = C.pres; ctx.lineWidth = 3; ctx.setLineDash([]); ctx.stroke();
+    line(ctx, xo, L.pt - 4, xo, L.pb, C.muted, 1, [3, 3]);
+    var xb = xo + 0.1 * w;
+    line(ctx, xo, Y(C3.eu), xb + 8, Y(C3.eu), C.pres, 1.5, [4, 3]);
+    arrow(ctx, xb, Y(C3.eu), xb, Y(0), C.pres, 2.5);
+    text(ctx, 'Δp / ρU² = Eu', xb + 8, (Y(C3.eu) + Y(0)) / 2 + 4, C.pres, 'left', 13, 600);
+    text(ctx, 'upstream', (L.x0 + xo) / 2, Y(C3.eu) - 8, C.muted, 'center', 12);
+    text(ctx, 'downstream', (xo + L.x1) / 2 + 0.1 * w, Y(0) - 8, C.muted, 'center', 12);
+  }
+  function setC() {
+    C3.eu = Math.pow(10, +$('s3e').value); C3.U = Math.pow(10, +$('s3U').value);
+    $('o3e').innerHTML = fmtEu(C3.eu); $('o3U').innerHTML = fmtU(C3.U);
+    var fi = C3.rho * C3.U * C3.U;
+    $('r3').innerHTML = '<div class="big">Eu = ' + fmtEu(C3.eu) + '</div><div>K = 2 Eu = ' + fmtEu(2 * C3.eu) + '</div><div>ρU² = <span class="iner">' + fmtP(fi) + '</span></div><div>Δp = Eu ρU² = <span class="pres">' + fmtP(C3.eu * fi) + '</span></div>';
+  }
+  on(['s3e', 's3U'], setC, s3);
+  press('[data-p3]', function (b) { return function () { $('s3e').value = Math.log10(+b.getAttribute('data-p3')); setC(); s3.dirty = true; }; });
+
+  /* ---------- Scene 4: pressure drop and power against speed ---------- */
+  var D4 = { eu: 3.16, r: 1 };
+  var s4 = scene('c4', function (w) { return w < 520 ? 0.9 : 0.5; }, draw4, null);
+  function draw4(s, C) {
+    var ctx = s.ctx, w = s.w, h = s.h, x0 = 0.12 * w, x1 = w - 16, pt = 0.1 * h, pb = 0.8 * h, i, r;
+    var X = function (v) { return x0 + (x1 - x0) * v / 4; }, Y = function (v) { return pb - (pb - pt) * v / 64; };
+    [0, 16, 32, 48, 64].forEach(function (v) { line(ctx, x0, Y(v), x1, Y(v), C.line, 1); text(ctx, v + '', x0 - 6, Y(v) + 4, C.muted, 'right', 12); });
+    [0, 1, 2, 3, 4].forEach(function (v) { text(ctx, v + '', X(v), pb + 17, C.muted, 'center', 12); });
+    line(ctx, x0, pt, x0, pb, C.fg, 1.5); line(ctx, x0, pb, x1, pb, C.fg, 1.5);
+    text(ctx, 'speed ratio U / U₀   (U₀ = 1 m/s)', (x0 + x1) / 2, pb + 38, C.muted, 'center', 12);
+    text(ctx, 'value relative to its value at U = U₀', x0 + 6, pt - 10, C.muted, 'left', 12);
+    function curve(f, col, lw, dash) {
+      ctx.beginPath();
+      for (i = 0; i <= 80; i++) { r = 4 * i / 80; if (i === 0) ctx.moveTo(X(r), Y(f(r))); else ctx.lineTo(X(r), Y(f(r))); }
+      ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.setLineDash(dash || []); ctx.stroke(); ctx.setLineDash([]);
+    }
+    curve(function (r) { return r * r; }, C.pres, 3);
+    curve(function (r) { return r * r * r; }, C.fg, 2.5, [7, 5]);
+    text(ctx, 'pumping power ∝ U³', X(3.4) - 10, Y(39.3) + 4, C.fg, 'right', 13, 600);
+    text(ctx, 'pressure drop ∝ U²', X(3.45), Y(11.9) + 24, C.pres, 'center', 13, 600);
+    var rr = D4.r, pulse = s.playing ? 1.5 * Math.sin(s.t * 4) : 0;
+    line(ctx, X(rr), Y(rr * rr * rr), X(rr), pb, C.muted, 1, [3, 3]);
+    ctx.fillStyle = C.pres; ctx.beginPath(); ctx.arc(X(rr), Y(rr * rr), 6 + pulse, 0, 6.2832); ctx.fill();
+    ctx.fillStyle = C.fg; ctx.beginPath(); ctx.arc(X(rr), Y(rr * rr * rr), 6 + pulse, 0, 6.2832); ctx.fill();
+  }
+  function setD() {
+    D4.eu = Math.pow(10, +$('s4e').value); D4.r = Math.pow(10, +$('s4r').value);
+    $('o4e').innerHTML = fmtEu(D4.eu); $('o4r').innerHTML = D4.r.toFixed(2);
+    var U = D4.r, dp = D4.eu * 1000 * U * U;
+    $('r4').innerHTML = '<div>U = ' + fmtU(U) + '</div><div>Δp = <span class="pres">' + fmtP(dp) + '</span> (× ' + (U * U).toPrecision(2) + ')</div><div>power per m² of pipe = ' + (dp * U >= 1e5 ? (dp * U / 1e3).toFixed(0) + ' kW' : (dp * U >= 1e3 ? (dp * U / 1e3).toFixed(1) + ' kW' : (dp * U).toFixed(0) + ' W')) + ' (× ' + (U * U * U).toPrecision(2) + ')</div><div>Eu stays ' + fmtEu(D4.eu) + '</div>';
+  }
+  on(['s4e', 's4r'], setD, s4);
+
+  /* ---------- main loop ---------- */
+  var last = performance.now();
+  function loop(now) {
+    var dt = Math.min(0.05, (now - last) / 1000); last = now;
+    var C = { fg: css('--fg'), muted: css('--muted'), water: css('--water'), pres: css('--pres'), iner: css('--iner'), plate: css('--plate'), fluid: css('--fluid'), line: css('--line') };
+    for (var n = 0; n < scenes.length; n++) {
+      var s = scenes[n];
+      if (!s.vis) continue;
+      if (s.playing) { s.t += dt; if (s.step) s.step(s, dt); } else if (!s.dirty) continue;
+      s.ctx.clearRect(0, 0, s.w, s.h); s.draw(s, C); s.dirty = false;
+    }
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+})();
+</script>
+
+</body></html>
